@@ -3,6 +3,7 @@
 import { act } from "react";
 import { createRoot } from "react-dom/client";
 import { afterEach, beforeEach, describe, expect, it } from "vitest";
+import { ThemeProvider } from "../context/ThemeContext";
 import { ApprovalPayloadRenderer, approvalLabel } from "./ApprovalPayload";
 
 // eslint-disable-next-line @typescript-eslint/no-explicit-any
@@ -35,17 +36,19 @@ describe("ApprovalPayloadRenderer", () => {
 
     act(() => {
       root.render(
-        <ApprovalPayloadRenderer
-          type="request_board_approval"
-          payload={{
-            title: "Reply with an ASCII frog",
-            summary: "Board asked for approval before posting the frog.",
-            recommendedAction: "Approve the frog reply.",
-            nextActionOnApproval: "Post the frog comment on the issue.",
-            risks: ["The frog might be too powerful."],
-            proposedComment: "(o)<",
-          }}
-        />,
+        <ThemeProvider>
+          <ApprovalPayloadRenderer
+            type="request_board_approval"
+            payload={{
+              title: "Reply with an ASCII frog",
+              summary: "Board asked for approval before posting the frog.",
+              recommendedAction: "Approve the frog reply.",
+              nextActionOnApproval: "Post the frog comment on the issue.",
+              risks: ["The frog might be too powerful."],
+              proposedComment: "(o)<",
+            }}
+          />
+        </ThemeProvider>,
       );
     });
 
@@ -62,19 +65,47 @@ describe("ApprovalPayloadRenderer", () => {
     });
   });
 
+  it("renders resource_request payload without falling back to raw JSON", () => {
+    const root = createRoot(container);
+
+    act(() => {
+      root.render(
+        <ThemeProvider>
+          <ApprovalPayloadRenderer
+            type="resource_request"
+            payload={{
+              title: "Access to SendGrid API",
+              description: "Need a **SendGrid** API key to send transactional emails.",
+            }}
+          />
+        </ThemeProvider>,
+      );
+    });
+
+    expect(container.textContent).toContain("Access to SendGrid API");
+    expect(container.textContent).toContain("SendGrid");
+    expect(container.textContent).not.toContain("\"description\"");
+
+    act(() => {
+      root.unmount();
+    });
+  });
+
   it("can hide the repeated title when the card header already shows it", () => {
     const root = createRoot(container);
 
     act(() => {
       root.render(
-        <ApprovalPayloadRenderer
-          type="request_board_approval"
-          hidePrimaryTitle
-          payload={{
-            title: "Reply with an ASCII frog",
-            summary: "Board asked for approval before posting the frog.",
-          }}
-        />,
+        <ThemeProvider>
+          <ApprovalPayloadRenderer
+            type="request_board_approval"
+            hidePrimaryTitle
+            payload={{
+              title: "Reply with an ASCII frog",
+              summary: "Board asked for approval before posting the frog.",
+            }}
+          />
+        </ThemeProvider>,
       );
     });
 

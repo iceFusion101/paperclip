@@ -1,11 +1,27 @@
-import { UserPlus, Lightbulb, ShieldAlert, ShieldCheck } from "lucide-react";
+import {
+  UserPlus,
+  Lightbulb,
+  ShieldAlert,
+  ShieldCheck,
+  KeyRound,
+  Send,
+  CreditCard,
+  Handshake,
+  ScrollText,
+} from "lucide-react";
 import { formatCents } from "../lib/utils";
+import { MarkdownBody } from "./MarkdownBody";
 
 export const typeLabel: Record<string, string> = {
   hire_agent: "Hire Agent",
   approve_ceo_strategy: "CEO Strategy",
   budget_override_required: "Budget Override",
   request_board_approval: "Board Approval",
+  resource_request: "Resource Request",
+  external_communication: "External Communication",
+  spend_approval: "Spend Approval",
+  client_commitment: "Client Commitment",
+  policy_change: "Policy Change",
 };
 
 function firstNonEmptyString(...values: unknown[]): string | null {
@@ -41,6 +57,11 @@ export const typeIcon: Record<string, typeof UserPlus> = {
   approve_ceo_strategy: Lightbulb,
   budget_override_required: ShieldAlert,
   request_board_approval: ShieldCheck,
+  resource_request: KeyRound,
+  external_communication: Send,
+  spend_approval: CreditCard,
+  client_commitment: Handshake,
+  policy_change: ScrollText,
 };
 
 export const defaultTypeIcon = ShieldCheck;
@@ -115,8 +136,8 @@ export function CeoStrategyPayload({ payload }: { payload: Record<string, unknow
     <div className="mt-3 space-y-1.5 text-sm">
       <PayloadField label="Title" value={payload.title} />
       {!!plan && (
-        <div className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-sm text-muted-foreground whitespace-pre-wrap font-mono text-xs max-h-48 overflow-y-auto">
-          {String(plan)}
+        <div className="mt-2 rounded-md bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+          <MarkdownBody className="text-xs text-muted-foreground">{String(plan)}</MarkdownBody>
         </div>
       )}
       {!plan && (
@@ -142,7 +163,9 @@ export function BudgetOverridePayload({ payload }: { payload: Record<string, unk
         </div>
       ) : null}
       {!!payload.guidance && (
-        <p className="text-muted-foreground">{String(payload.guidance)}</p>
+        <div className="mt-2 rounded-md bg-muted/40 px-3 py-2 max-h-48 overflow-y-auto">
+          <MarkdownBody className="text-xs text-muted-foreground">{String(payload.guidance)}</MarkdownBody>
+        </div>
       )}
     </div>
   );
@@ -185,7 +208,7 @@ function BoardApprovalPayloadContent({ payload }: { payload: Record<string, unkn
       {summary && (
         <div className="space-y-1">
           <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">Summary</p>
-          <p className="leading-6 text-foreground/90">{summary}</p>
+          <MarkdownBody className="leading-6 text-foreground/90">{summary}</MarkdownBody>
         </div>
       )}
       {recommendedAction && (
@@ -193,13 +216,13 @@ function BoardApprovalPayloadContent({ payload }: { payload: Record<string, unkn
           <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-amber-700 dark:text-amber-300">
             Recommended action
           </p>
-          <p className="mt-1 leading-6 text-foreground">{recommendedAction}</p>
+          <MarkdownBody className="mt-1 leading-6 text-foreground">{recommendedAction}</MarkdownBody>
         </div>
       )}
       {nextActionOnApproval && (
         <div className="rounded-lg border border-border/60 bg-background/60 px-3.5 py-3">
           <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">On approval</p>
-          <p className="mt-1 leading-6 text-foreground">{nextActionOnApproval}</p>
+          <MarkdownBody className="mt-1 leading-6 text-foreground">{nextActionOnApproval}</MarkdownBody>
         </div>
       )}
       {risks.length > 0 && (
@@ -220,9 +243,35 @@ function BoardApprovalPayloadContent({ payload }: { payload: Record<string, unkn
           <p className="text-[11px] font-medium uppercase tracking-[0.08em] text-muted-foreground">
             Proposed comment
           </p>
-          <pre className="max-h-48 overflow-auto rounded-lg border border-border/60 bg-muted/50 px-3.5 py-3 font-mono text-xs leading-5 text-muted-foreground whitespace-pre-wrap">
-            {proposedComment}
-          </pre>
+          <div className="max-h-48 overflow-auto rounded-lg border border-border/60 bg-muted/50 px-3.5 py-3">
+            <MarkdownBody className="text-xs leading-5 text-muted-foreground">{proposedComment}</MarkdownBody>
+          </div>
+        </div>
+      )}
+    </div>
+  );
+}
+
+export function GenericApprovalPayload({ payload }: { payload: Record<string, unknown> }) {
+  const title = firstNonEmptyString(payload.title);
+  const body = firstNonEmptyString(payload.description, payload.body, payload.summary);
+
+  if (!title && !body) {
+    return (
+      <pre className="mt-2 rounded-md bg-muted/40 px-3 py-2 text-xs text-muted-foreground overflow-x-auto max-h-48">
+        {JSON.stringify(payload, null, 2)}
+      </pre>
+    );
+  }
+
+  return (
+    <div className="mt-3 space-y-2 text-sm">
+      {title && (
+        <p className="font-medium text-foreground">{title}</p>
+      )}
+      {body && (
+        <div className="rounded-md bg-muted/40 px-3 py-2 max-h-64 overflow-y-auto">
+          <MarkdownBody className="text-xs text-muted-foreground">{body}</MarkdownBody>
         </div>
       )}
     </div>
@@ -242,6 +291,15 @@ export function ApprovalPayloadRenderer({
   if (type === "budget_override_required") return <BudgetOverridePayload payload={payload} />;
   if (type === "request_board_approval") {
     return <BoardApprovalPayload payload={payload} hideTitle={hidePrimaryTitle} />;
+  }
+  if (
+    type === "resource_request" ||
+    type === "external_communication" ||
+    type === "spend_approval" ||
+    type === "client_commitment" ||
+    type === "policy_change"
+  ) {
+    return <GenericApprovalPayload payload={payload} />;
   }
   return <CeoStrategyPayload payload={payload} />;
 }
