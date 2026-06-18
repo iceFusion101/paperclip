@@ -5,6 +5,7 @@ const ORIGINAL_PAPERCLIP_RUNTIME_API_URL = process.env.PAPERCLIP_RUNTIME_API_URL
 const ORIGINAL_PAPERCLIP_API_URL = process.env.PAPERCLIP_API_URL;
 const ORIGINAL_PAPERCLIP_LISTEN_HOST = process.env.PAPERCLIP_LISTEN_HOST;
 const ORIGINAL_PAPERCLIP_LISTEN_PORT = process.env.PAPERCLIP_LISTEN_PORT;
+const ORIGINAL_PAPERCLIP_RUNTIME_API_CANDIDATES_JSON = process.env.PAPERCLIP_RUNTIME_API_CANDIDATES_JSON;
 const ORIGINAL_HOST = process.env.HOST;
 const ORIGINAL_PORT = process.env.PORT;
 
@@ -20,6 +21,12 @@ afterEach(() => {
 
   if (ORIGINAL_PAPERCLIP_LISTEN_PORT === undefined) delete process.env.PAPERCLIP_LISTEN_PORT;
   else process.env.PAPERCLIP_LISTEN_PORT = ORIGINAL_PAPERCLIP_LISTEN_PORT;
+
+  if (ORIGINAL_PAPERCLIP_RUNTIME_API_CANDIDATES_JSON === undefined) {
+    delete process.env.PAPERCLIP_RUNTIME_API_CANDIDATES_JSON;
+  } else {
+    process.env.PAPERCLIP_RUNTIME_API_CANDIDATES_JSON = ORIGINAL_PAPERCLIP_RUNTIME_API_CANDIDATES_JSON;
+  }
 
   if (ORIGINAL_HOST === undefined) delete process.env.HOST;
   else process.env.HOST = ORIGINAL_HOST;
@@ -72,5 +79,25 @@ describe("buildPaperclipEnv", () => {
     const env = buildPaperclipEnv({ id: "agent-1", companyId: "company-1" });
 
     expect(env.PAPERCLIP_API_URL).toBe("http://[::1]:3101");
+  });
+
+  it("can prefer a loopback runtime candidate for local heartbeat adapters", () => {
+    process.env.PAPERCLIP_RUNTIME_API_URL = "http://tppmini-1.taildf9a73.ts.net:3101";
+    process.env.PAPERCLIP_API_URL = "http://tppmini-1.taildf9a73.ts.net:3101";
+    process.env.PAPERCLIP_RUNTIME_API_CANDIDATES_JSON = JSON.stringify([
+      "http://tppmini-1.taildf9a73.ts.net:3101",
+      "http://127.0.0.1:3101",
+    ]);
+
+    const env = buildPaperclipEnv(
+      { id: "agent-1", companyId: "company-1" },
+      { preferLocalApiUrl: true },
+    );
+
+    expect(env.PAPERCLIP_API_URL).toBe("http://127.0.0.1:3101");
+    expect(JSON.parse(env.PAPERCLIP_RUNTIME_API_CANDIDATES_JSON)).toEqual([
+      "http://tppmini-1.taildf9a73.ts.net:3101",
+      "http://127.0.0.1:3101",
+    ]);
   });
 });
