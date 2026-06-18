@@ -890,7 +890,31 @@ export function buildInvocationEnvForLogs(
   return redactEnvForLogs(merged);
 }
 
-export function buildPaperclipEnv(agent: { id: string; companyId: string }): Record<string, string> {
+function parseRuntimeApiCandidates(rawCandidates: string | undefined): string[] {
+  if (!rawCandidates?.trim()) return [];
+  try {
+    const parsed = JSON.parse(rawCandidates);
+    if (!Array.isArray(parsed)) return [];
+    return parsed.filter((value): value is string => typeof value === "string" && value.trim().length > 0);
+  } catch {
+    return [];
+  }
+}
+
+function isLoopbackApiUrl(rawUrl: string): boolean {
+  try {
+    const { hostname } = new URL(rawUrl);
+    const normalized = hostname.toLowerCase();
+    return normalized === "localhost" || normalized === "127.0.0.1" || normalized === "::1" || normalized === "[::1]";
+  } catch {
+    return false;
+  }
+}
+
+export function buildPaperclipEnv(
+  agent: { id: string; companyId: string },
+  options: { preferLocalApiUrl?: boolean } = {},
+): Record<string, string> {
   const resolveHostForUrl = (rawHost: string): string => {
     const host = rawHost.trim();
     if (!host || host === "0.0.0.0" || host === "::") return "localhost";
@@ -905,11 +929,19 @@ export function buildPaperclipEnv(agent: { id: string; companyId: string }): Rec
     process.env.PAPERCLIP_LISTEN_HOST ?? process.env.HOST ?? "localhost",
   );
   const runtimePort = process.env.PAPERCLIP_LISTEN_PORT ?? process.env.PORT ?? "3100";
+  const runtimeCandidates = parseRuntimeApiCandidates(process.env.PAPERCLIP_RUNTIME_API_CANDIDATES_JSON);
+  const localApiUrl = options.preferLocalApiUrl
+    ? runtimeCandidates.find((candidate) => isLoopbackApiUrl(candidate))
+    : undefined;
   const apiUrl =
+    localApiUrl ??
     process.env.PAPERCLIP_RUNTIME_API_URL ??
     process.env.PAPERCLIP_API_URL ??
     `http://${runtimeHost}:${runtimePort}`;
   vars.PAPERCLIP_API_URL = apiUrl;
+  if (runtimeCandidates.length > 0) {
+    vars.PAPERCLIP_RUNTIME_API_CANDIDATES_JSON = JSON.stringify(runtimeCandidates);
+  }
   return vars;
 }
 
